@@ -5,6 +5,16 @@ import "leaflet/dist/leaflet.css";
 export default function ZurichParkingApp() {
   const [parkingSpots, setParkingSpots] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [parkingPoints, setParkingPoints] = useState(0);
+
+  useEffect(() => {
+    const storedPoints = parseInt(localStorage.getItem("parkingPoints") || "0");
+    setParkingPoints(storedPoints);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("parkingPoints", parkingPoints);
+  }, [parkingPoints]);
 
   useEffect(() => {
     fetch("/api/parking-zurich")
@@ -23,7 +33,19 @@ export default function ZurichParkingApp() {
     spot.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getGoogleMapsLink = (lat, lng) => \`https://www.google.com/maps/dir/?api=1&destination=\${lat},\${lng}\`;
+  const getGoogleMapsLink = (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+  const handleReport = (id) => {
+    const free = parseInt(prompt("Anzahl freie Plätze?"));
+    if (!isNaN(free)) {
+      setParkingSpots((spots) =>
+        spots.map((spot) =>
+          spot.id === id ? { ...spot, freeSpots: free } : spot
+        )
+      );
+      setParkingPoints((points) => points + 1);
+    }
+  };
 
   return (
     <div style={{ padding: "1rem" }}>
@@ -35,6 +57,7 @@ export default function ZurichParkingApp() {
         onChange={(e) => setSearchTerm(e.target.value)}
         style={{ marginBottom: "1rem", padding: "0.5rem", width: "100%" }}
       />
+      <div style={{ marginBottom: "0.5rem" }}>Ihre Punkte: {parkingPoints}</div>
       <MapContainer center={[47.3769, 8.5417]} zoom={14} scrollWheelZoom={false} style={{ height: "400px", width: "100%" }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
         {filteredSpots.map((spot) => (
@@ -45,6 +68,8 @@ export default function ZurichParkingApp() {
               Freie Plätze: {spot.freeSpots}
               <br />
               <a href={getGoogleMapsLink(spot.lat, spot.lng)} target="_blank" rel="noopener noreferrer">Navigation</a>
+              <br />
+              <button onClick={() => handleReport(spot.id)}>Plätze melden</button>
             </Popup>
           </Marker>
         ))}
